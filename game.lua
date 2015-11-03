@@ -14,12 +14,11 @@ local addBlockTimer
 local newScene = false
 
 function scene:create( event )
-
     local sceneGroup = self.view 
 
     local color = 'red'
     for i = 1, 10 do 
-		local block = display.newRect( 0, 0, 60, 2 )
+		local block = display.newRect( -1000, -1000, 60, 2 )
 		block.index = i
 		block.name = 'block'
 		block.isAlive = false
@@ -124,6 +123,11 @@ end
 
 
 function switchColor(obj)
+	if obj == nil then
+		print(object.name .. " is nil!!")
+	end
+	-- return 0
+
 	if obj.color == 'red' then
 		obj:setFillColor(0, 1, 0)
 		obj.color = 'green'
@@ -173,13 +177,15 @@ function onCollision(self, e)
 			elseif e.other.name == 'block' then
 				block = e.other
 			end
+
 			timer.performWithDelay(1, function() 
 				switchColor(player)
 				removeBlock(block) 
 			end )
+		
             
 		elseif self.name == 'block' or e.other.name == 'block' then
-			if newScene ~= true then
+			if not newScene then
 				newScene = true
 				composer.gotoScene( 'tryagain' )
 			end
@@ -191,7 +197,7 @@ end
 function screenTouched(e)
 	local direction = 1
 
-	if e.x < player.x then
+	if e.x < display.contentWidth/2 then
 		direction = -1
 	end
 
