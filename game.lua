@@ -2,9 +2,8 @@ display.setStatusBar( display.HiddenStatusBar )
 
 local composer = require( "composer" )
 local scene = composer.newScene()
-
-local math2d = require 'plugin.math2d'
-local phyics = require 'physics'
+local mydata = require "mydata"
+local physics = require "physics"
 physics.start()
 physics.setGravity( 0, 7 )
 
@@ -12,6 +11,11 @@ local player
 local blocks = {}
 local addBlockTimer
 local newScene = false
+local touched = false
+local direction = 1
+local momentum = 0.0
+
+local scoreText
 
 function scene:create( event )
     local sceneGroup = self.view 
@@ -24,8 +28,6 @@ function scene:create( event )
 		block.isAlive = false
 		block.isVisible = false
 		physics.addBody( block, 'static' )
-		block.collision = onCollision
-		block:addEventListener( 'collision', block )
 		blocks[i] = block
 		block.color = color	
 		color = switchColor(block)	
@@ -64,6 +66,11 @@ function scene:create( event )
 	player:addEventListener( 'collision', player )
 	player.isFixedRotation = true  
 	sceneGroup:insert( player )
+
+	-- create score
+	mydata.score = 0
+	scoreText = display.newText( {text='Score: ' .. mydata.score, x=display.contentWidth-60, y=20, width=100, height=20, align="right"} )
+	sceneGroup:insert( scoreText )
 end
 
 
@@ -90,9 +97,6 @@ function scene:hide( event )
     local phase = event.phase
 
     if ( phase == "will" ) then
-    	for k, block in pairs(blocks) do
-    		block:removeEventListener( 'collision', block )
-    	end
 		Runtime:removeEventListener( 'enterFrame', update )
 		Runtime:removeEventListener( 'touch', screenTouched )
 		Runtime:removeEventListener( 'collision', onCollision)
@@ -181,34 +185,45 @@ function onCollision(self, e)
 			timer.performWithDelay(1, function() 
 				switchColor(player)
 				removeBlock(block) 
+				mydata.score = mydata.score + 1
+				scoreText.text = 'Score: ' .. mydata.score
 			end )
 		
             
 		elseif self.name == 'block' or e.other.name == 'block' then
-			if not newScene then
-				newScene = true
-				composer.gotoScene( 'tryagain' )
-			end
+			gameOver()
 		end
 	end
 end
 
+function gameOver()
+	if not newScene then
+		newScene = true
+		mydata.setBestScore( )
+		composer.gotoScene( 'retry', {effect='fade', time=200} )
+	end
+end
 
 function screenTouched(e)
-	local direction = 1
+
+	if e.phase == 'began' then
+		touched = true
+	elseif e.phase == 'ended' then
+		touched = false
+	end
 
 	if e.x < display.contentWidth/2 then
 		direction = -1
+	else 
+		direction = 1
 	end
-
-	player:setLinearVelocity(direction * 100, -100)
 end
 
 function update()
 
 	for k, block in pairs(blocks) do
 		if block.isAlive then
-			block.y = block.y - 2.2
+			block.y = block.y - 3
 			if block.y < 0 then
 				removeBlock(block)
 			end
@@ -216,7 +231,20 @@ function update()
 	end
 
 	if player.y > display.contentHeight then
-		composer.gotoScene( 'tryagain' )
+		gameOver()
+	end
+
+	if momentum > 1 then
+		momentum = 1
+	elseif momentum < 0 then
+		momentum = 0
+	end
+
+	if touched then 
+		momentum = momentum + 0.1
+		player:setLinearVelocity(direction * 120, -100)
+	else 
+		momentum = momentum - 0.1
 	end
 end
 
